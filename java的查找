@@ -1,0 +1,17 @@
+## 符号表
+
+当设置不能存在null key时，有两个好处
+
+* 首先，可以直接通过get（key）来判断键是否存在
+* 其次，可以进行延时删除某个entry，设置put（key，null）
+
+延时删除：首先设置key对应的值为null，然后之后在删除
+
+及时删除：直接从表中删除指定的键
+
+## 有序符号表
+
+```
+public class ST<Key extends Comparable<key>,Value>
+```
+
