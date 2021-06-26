@@ -212,9 +212,6 @@ public class RedAndBlackTree<Key extends Comparable<Key>, Value> {
 
     }
     private Node deleteMin(Node root){
-        if (root==null){
-            return null;
-        }
         if (root.left==null){
             return null;
         }
