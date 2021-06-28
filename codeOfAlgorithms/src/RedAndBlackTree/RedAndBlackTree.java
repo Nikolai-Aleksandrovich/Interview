@@ -34,7 +34,7 @@ public class RedAndBlackTree<Key extends Comparable<Key>, Value> {
         }
         //注意这三个条件
         if (isRed(root.right)&&isRed(root.left)){
-            flapColor(root);
+            inputFlipColor(root);;
         }else if (isRed(root.right)&&!isRed(root.left)){
             leftRotate(root);
         }else if (isRed(root.left)&&isRed(root.left.left)){
