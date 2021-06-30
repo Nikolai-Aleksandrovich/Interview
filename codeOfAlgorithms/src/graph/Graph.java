@@ -19,6 +19,7 @@ public class Graph {
             adj[i] = new Bag<Integer>();
         }
     }
+    //读取数据并购图
     public Graph(In in){
         this(in.readInt());
         int E = in.readInt();
@@ -32,18 +33,23 @@ public class Graph {
             addEdge(v,w);
         }
     }
+    //结点的数量
     public int V(){
         return V;
     }
+    //边的数量
     public int E(){
         return E;
     }
+    //添加一条边
     public void addEdge(int v,int w){
         adj[v].add(w);
         adj[w].add(v);
         E++;
     }
+    //返回一个结点的所有邻接结点
     public Iterable<Integer> adj(int v){
-
+        return adj(v);
     }
 }
+
