@@ -225,9 +225,198 @@ public class MyPartition implements Partitioner {
 
 再均衡：分区的所有权发生变化，从一个消费者转到另一个消费者，再均衡发生的过程中，群组会发生一段时间的不可用，而且上一个消费者读取的进度不会继承到下一个消费者的读取上
 
+分配分区：每次再均衡都会发生，当消费者新加入群组，向群组协调器发送JoinGroup请求，第一个加入的为群主，群主从协调器获得成员列表，并为每个成员分配分区，每个成员只知道自己的分区，
+
 心跳：消费者向群组协调器broker发送心跳，维持自身的读取权以及自身与群组的所属关系，如果较长时间无心跳，就会触发一次再均衡
 
-
+心跳线程：kafka添加了一个独立的心跳线程，在轮询消息的空挡发送心跳，发送心跳的频率（用于检测崩溃的消费者）和消息轮询（由处理消息的时间决定）的频率就是相互独立的。在新版本中，可以指定消费者在离开群组之前有多长时间不触发轮询，这样可以避免活锁（某个时候程序没有崩溃，而是因为其他原因无法运行），而session.timeout.ms用来控制多长时间检查消费者发生崩溃，以及停止发送心跳的时间
 
 kafka消费者从属消费者群组，一个群组的消费者订阅一个主题，每个消费者接受一部分分区的消息
+
+## 创建Kafka消费者
+
+读取消息前，先创建一个KafkaConsumer对象，注入属性，属性由bootstrap.servers\key.deserialize\value.deserializer构成，还有group.id不是必须的
+
+* bootstrap.servers指定Kafka集群的连接字符串
+* 反序列化器将字节数组转化为Java对象
+* group.id指定KafkaConsumer属于哪一个群组
+
+## 订阅主题
+
+subscribe接受一个主题列表作为参数
+
+## 轮询
+
+consumer通过一个轮询向服务器请求数据，一旦订阅，轮询就会进行群组协调，分区均衡，发送心跳，获取数据，只要使用API就可以处理从分区返回的数据
+
+轮询在第一次调用poll方法时，会负责查找群组协调器，之后加入群组，接受分配的分区，如果发生了再均衡，这个在均衡的过程是在轮询其间进行的，心跳也是在轮询期间进行，所以要尽量保证轮询其间的处理工作尽快完成
+
+线程安全：一个消费者占用一个线程，把消费者的逻辑封装在自己的对象里，然后用多个线程让每个消费者运行在自己的线程。
+
+### 详细配置
+
+* fetch.min.bytes
+
+  指定消费者从服务器获取的最小字节数，如果broker收到消费者请求，但是数据量小于改大小，就会等有足够的数据才会发送
+
+* fetch.max.wait.ms
+
+  指定broker的等待时间，如果很久没有获得足够的数据，就在这个值内返回目前的数据
+
+* max.partition.fetch.bytes
+
+  指定服务器从每个分区返回给消费者的最大字节数，默认1MB，导致poll方法从每个分区返回的记录不超过这个字节，这个值必须比broker一次能接受的消息大，不然消费者无法读取所有的信息，可以调小这个值避免会话过期，导致消费者重分配
+
+* session.timeout.ms
+
+  消费之死亡之前可以和服务器断开连接的时间，3s默认，如果消费者没有在这个时间内发送心跳，那么就会触发再均衡，把这个分区分配给别的消费者，这个值和heartbeat.interval.ms一起用，心跳值指可以消费者发送自己心跳的频率，而这个值指多久没有心跳就会重分配
+
+* enable.auto.commit
+
+  消费者是否自动提交偏移量，默认true，为了避免数据丢失和重复数据，可以设置为false，使用auto.commit.interval.ms控制发送频率
+
+* partition.assignment.strategy
+
+  PartitionAssignor根据指定的消费者和主题，决定分区分配策略
+
+  * range策略
+
+    把主题中连续的分区分配给消费者
+
+  * roundRoubin
+
+    将所有主题逐个分配给消费者，如果所有消费者订阅相同的主题，那就给消费者分配i相同数量的分区
+
+* clientid
+
+  标志从客户端发过来的消息
+
+* max.poll.records
+
+  控制单次call方法返回的记录数量，可控制在轮询中处理的信息量
+
+* receive.buffer.bytes和send.buffer.bytes
+
+  TCP缓冲区也可以设置大小
+
+## 提交和偏移量
+
+偏移量：消息在分区的位置，消费者使用kafka来追踪消息在分区的位置
+
+提交：更新分区的当前位置
+
+消费者如何提交偏移量：
+
+消费者发送消息到consumer_offset的特殊主题发送消息，包含每个分区的偏移量，如果消费者一直处于运行状态，那偏移量无用，但是如果消费者宕机或者新的消费者加入群组，那么会再均衡，新的消费者可以从这个偏移量继续。
+
+### 自动提交
+
+把enable.auto.commit设置为true，那么每5s，消费者就会把poll接收到的最大偏移量提交，提交时间由auto.commit.interval.ms决定，提交通过轮询做，每次进行轮询都会检查是否提交偏移量了，如果是，那么就会提交从上一次轮询返回的偏移量，如果否，那就提交当前的偏移量
+
+每次调用轮询方法，都会提交上一次调用返回的偏移量，并不知道那些消息被处理了，所以这次调用要保持当前调用返回的消息被处理完毕，这才处理异常和提前退出轮询应该注意
+
+问题在于，如果设置5s的间隔，3s后发生了再均衡，那么就会重复读取3s内到达的数据。
+
+### 提交当前偏移量（同步）（borker回应前，应用程序会一直阻塞）
+
+可以在必要的时间提交偏移量，而不是固定时间间隔
+
+首先设置enable.auto.commit为false，使用commitSync()提交偏移量，可以提交由poll返回的最新偏移量
+
+### 异步提交
+
+当任务提交过程中，或者遇到某些问题之前，commitSync()会一直重试，但是commitAsync()不会，因为可能受到已过期的偏移量信息
+
+### 同步和异步组合提交
+
+一般的提交失败不会出现问题，但是如果这是关闭消费者或者再均衡前的最后一次提交，那就要确保成功，在消费者关闭前一般会组合使用同步和异步提交
+
+### 提交特定的偏移量
+
+如果想频繁的提交偏移量，或者在批次处理的中途提交，可以在调用commitSync()和commitAsync()的时候传进去要提交的分区和偏移量的map，但是一个消费者可能读取两个分区，所以要跟踪所有分区的偏移量
+
+### 再均衡监听器（失去分区所有权时要做）
+
+消费者退出和分区再均衡，会产生一次清理清理工作：消费者会在失去一个分区所有权之前，提交一个已处理的偏移量，如果消费者有缓冲区处理偶发事情，那么失去所有权时，需要处理缓冲区累积的记录。
+
+首先创建一个继承了 ConsumerRebalanceListener，重写其中两个方法， onPartitionsRevoked和onPartitionsAssigned，每一次再均衡前和再均衡后都会触发
+
+如果发生再均衡，则在即将失去分区所有权的时候，提交最近处理过的偏移量，而不是批次中在处理的最后一个偏移量，因为分区在处理的过程中可能会被撤回，并且要提交所有消息的偏移量，而不是即将失去分区所有权的偏移量
+
+调用subscribe方法传进去一个ConsumerRebalanceLisener,这个实例有两个需要实现的方法：
+
+```
+ class HandleRebalance implements ConsumerRebalanceListener{
+
+            @Override
+            public void onPartitionsRevoked(Collection<TopicPartition> collection) {
+                System.out.println("lost partitions in rebalance. Committing current offsets"+currentOffsets);
+                consumer.commitSync(currentOffsets);
+            }
+
+            @Override
+            public void onPartitionsAssigned(Collection<TopicPartition> collection) {
+
+            }
+        }
+```
+
+* 该方法会在在均衡开始之前和消费者停止读取信息之后调用，在这里提交偏移量
+
+  ```
+  @Override
+              public void onPartitionsRevoked(Collection<TopicPartition> collection) {
+                  System.out.println("lost partitions in rebalance. Committing current offsets"+currentOffsets);
+                  consumer.commitSync(currentOffsets);
+              }
+  ```
+
+* 该方法会在分配分区之后和消费者读取信息之前调用
+
+  ```
+   @Override
+              public void onPartitionsAssigned(Collection<TopicPartition> collection) {
+  
+              }
+  ```
+
+### 从特定偏移量开始处理记录
+
+可以使用poll方法从特定偏移量处开始处理消息，从分区首部或者分区尾部读取：seekToBegining(Collection<TopicPartition> tp)  seekToEnd(Collection<TopicPartition> tp)
+
+使用ConsumerRebalanceListener和seek方法：
+
+### 如何退出轮询
+
+要退出循环，就要用另一个线程调用consumer.wakeup()方法，这是唯一一个消费者可以从其他线程安全调用的方法，抛出WakeupException异常，在退出线程前调用close方法很重要，他会提交任何未提交的信息，并告知自己要离开群组，并且触发再均衡
+
+运行在单独的线程，当需要终结时，调用wakeup方法，不必要处理WakeupException
+
+```
+Runtime.getRuntime().addShutdownHook(new Thread(){
+            public void run(){
+                System.out.println("exit...");
+                consumer.wakeup();
+                try{
+                    mainThread.join();
+                }catch (InterruptedException e){
+                    e.printStackTrace();
+                }
+            }
+        });
+```
+
+## 集群成员关系
+
+当borker长时间无响应，就会在zookeeper上断开连接，对应的临时节点就会移除，监听列表的kafka组件会被告知这个broker已经移除
+
+当关闭broker时，节点会消失，但是他的id还可能存在在其他数据结构中
+
+### 控制器
+
+**控制器的竞争和故障：**除了borker的日常工作，它还包含broker的首领选举，第一个控制器会创建一个控制器，之后到来的broker都会尝试创建首领控制器，但是会出现一个错误阻止创建，并导致创建一个zookeeper watch对象，以方便接收首领的变更通知
+
+当控制器出现故障，这个临时节点会消失，其他watch对象得到通知，会尝试让自己变成新的控制器，并且向所有broker发送controller epoch，比之前更大数值。
+
+**首领的选举：**当控制器发现一个broker离开群组，并且他原本包含集群的首领（分区），那么就会在该（分区列表副本的下一个副本中 ）选出首领，并将信息发给所有包含新首领或现有跟随者的broker发送谁是新首领，谁是分区跟随者的信息，新首领处理生产者消费者的请求，跟随者负责复制
 
