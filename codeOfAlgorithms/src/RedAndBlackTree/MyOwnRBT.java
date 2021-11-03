@@ -184,25 +184,54 @@ public class MyOwnRBT<Key extends Comparable<Key>,Value> {
         return root==null;
     }
 
+//    public void delMin(){
+//        if(!isRED(root.left)&&!isRED(root.right)){
+//            root.color = RED;
+//        }
+//        root = delMin(root);
+//        if (!isEmpty()){
+//            root.color = BLACK;
+//        }
+//    }
+//    public Node delMin(Node root){
+//        if(root.left==null){
+//            return null;
+//        }
+//        if (!isRED(root.left)&&!isRED(root.left.left)){
+//            root = moveRedLeft(root);
+//        }
+//        root.left = delMin(root.left);
+//        return balance(root);
+//    }
     public void delMin(){
-        if(!isRED(root.left)&&!isRED(root.right)){
-            root.color = RED;
+        if (root.left.color== root.right.color == BLACK){
+            root.color=RED;
         }
         root = delMin(root);
-        if (!isEmpty()){
-            root.color = BLACK;
+        if (root!=null){
+            root.color=BLACK;
         }
     }
-    public Node delMin(Node root){
-        if(root.left==null){
+    public Node delMin(Node node){
+        if (node.left==null){
             return null;
         }
-        if (!isRED(root.left)&&!isRED(root.left.left)){
-            root = moveRedLeft(root);
+        if (node.right.left.color==RED){
+            node = moveRedLeft(node);
         }
-        root.left = delMin(root.left);
-        return balance(root);
+        node.left = delMin(node.left);
+        return balance(node);
     }
+//    public Node moveRedLeft(Node node){
+//        delFlipColor(node);
+//        if (node.left.right.color==RED){
+//            node.right = rightRotate(node.right);
+//            node = leftRotate(node);
+//        }
+//        return node;
+//    }
+
+
     public Node moveRedRight(Node node){
         //当结点为红色，且两个根节点都是黑色
         //那么将right或者right的子节点变红
@@ -215,80 +244,142 @@ public class MyOwnRBT<Key extends Comparable<Key>,Value> {
         return node;
     }
 
-    public void deleteMax(){
-        if (!isRED(root.left)&&!isRED(root.right)){
+//    public void deleteMax(){
+//        if (!isRED(root.left)&&!isRED(root.right)){
+//            root.color = RED;
+//        }
+//        root = deleteMax(root);
+//        if (!isEmpty()){
+//            root.color = BLACK;
+//        }
+//
+//    }
+//    private Node deleteMax(Node root){
+//        //判断left是否为红，如果是，则从left右旋，使一个结点右移
+//        if (isRED(root.left)){
+//            root = rightRotate(root);
+//        }
+//        if (root.right==null){
+//            return null;
+//        }
+//        if(!isRED(root.right)&&!isRED(root.right.left)){
+//            root = moveRedRight(root);
+//        }
+//        root.right = deleteMax(root.right);
+//        return balance(root);
+//
+//    }
+    public void delMax(){
+        if (root.left.color==root.right.color==BLACK){
             root.color = RED;
         }
-        root = deleteMax(root);
-        if (!isEmpty()){
-            root.color = BLACK;
+        root = delMax(root);
+        if (root!=null){
+            root.color=BLACK;
         }
-
     }
-    private Node deleteMax(Node root){
-        //判断left是否为红，如果是，则从left右旋，使一个结点右移
-        if (isRED(root.left)){
-            root = rightRotate(root);
+    public Node delMax(Node node){
+        if (node.left.color==RED){
+            node = rightRotate(node);
         }
-        if (root.right==null){
+        if (node.right==null){
             return null;
         }
-        if(!isRED(root.right)&&!isRED(root.right.left)){
-            root = moveRedRight(root);
+        if (root.right.color==BLACK&&root.right.left.color==BLACK){
+            node = moveRedRight(node);
         }
-        root.right = deleteMax(root.right);
-        return balance(root);
+        root.right = delMax(root.right);
+        return balance(node);
 
     }
+//    public void delete(Key key){
+//        if (!isRED(root.left)&&!isRED(root.right)){
+//            root.color = RED;
+//        }
+//        root = delete(key,root);
+//        if (!isEmpty()){
+//            root.color = BLACK;
+//        }
+//    }
+//    public Node delete(Key key,Node root){
+//        //cmp is proposed first
+//        int cmp = key.compareTo(root.key);
+//        //there are two situation,left or middle/right
+//        if (cmp<0){
+//            //if left and leftleft are black,then move right2left
+//            if (!isRED(root.left)&&!isRED(root.left.left)){
+//                root = moveRedLeft(root);
+//            }
+//            //recursively doing so
+//            root.left = delete(key,root.left);
+//        }else{
+//            //如果该店左子节点为红，右移
+//            if (isRED(root.left)){
+//                root = rightRotate(root);
+//            }
+//            //如果该点就是要删除的点，而且该点的右子节点为空
+//            //直接返回空
+//            if (cmp==0&&root.right == null){
+//                return null;
+//            }
+//            //如果右节点为黑，右节点的左节点也为黑，那么从左借节点
+//            if (!isRED(root.right)&&!isRED(root.right.left)){
+//                root = moveRedRight(root);
+//            }
+//            if (cmp==0){
+//                //当找到要删除的节点是，要找到它的后继节点，然后吧后继节点替换掉它本身
+//                //首先获得后继节点的value，设置为root的value，找后继节点，使用get，root.right,min(root.right)作为参数
+//                root.value = get(min(root.right).key,root.right).value;
+//                //其次找到key
+//                root.key = min(root.right).key;
+//                //最后使用删除最小节点的办法，删除后继节点
+//                root.right = delMin(root.right);
+//            }else {
+//                //递归进行
+//                root.right = delete(key,root.right);
+//            }
+//
+//        }
+//        return balance(root);
+//    }
     public void delete(Key key){
-        if (!isRED(root.left)&&!isRED(root.right)){
-            root.color = RED;
+        if (root.left.color==BLACK&&root.right.color==BLACK){
+            root.color=RED;
         }
-        root = delete(key,root);
-        if (!isEmpty()){
-            root.color = BLACK;
+        root = delete(root,key);
+        if (root!=null){
+            root.color=BLACK;
         }
     }
-    public Node delete(Key key,Node root){
-        //cmp is proposed first
-        int cmp = key.compareTo(root.key);
-        //there are two situation,left or middle/right
-        if (cmp<0){
-            //if left and leftleft are black,then move right2left
-            if (!isRED(root.left)&&!isRED(root.left.left)){
-                root = moveRedLeft(root);
-            }
-            //recursively doing so
-            root.left = delete(key,root.left);
-        }else{
-            //如果该店左子节点为红，右移
-            if (isRED(root.left)){
-                root = rightRotate(root);
-            }
-            //如果该点就是要删除的点，而且该点的右子节点为空
-            //直接返回空
-            if (cmp==0&&root.right == null){
-                return null;
-            }
-            //如果右节点为黑，右节点的左节点也为黑，那么从左借节点
-            if (!isRED(root.right)&&!isRED(root.right.left)){
+    public Node delete(Node node,Key key){
+        int cmp = key.compareTo(node.key);
+        if (cmp>=0){
+            if (root.left.color==RED){
                 root = moveRedRight(root);
             }
+            if (cmp == 0&&root.right==null){
+                return null;
+            }
+            if (node.right.color==node.right.left.color==BLACK){
+                node = moveRedRight(node);
+            }
             if (cmp==0){
-                //当找到要删除的节点是，要找到它的后继节点，然后吧后继节点替换掉它本身
-                //首先获得后继节点的value，设置为root的value，找后继节点，使用get，root.right,min(root.right)作为参数
                 root.value = get(min(root.right).key,root.right).value;
-                //其次找到key
                 root.key = min(root.right).key;
-                //最后使用删除最小节点的办法，删除后继节点
-                root.right = delMin(root.right);
+                root.right=delMin(root.right);
             }else {
-                //递归进行
-                root.right = delete(key,root.right);
+                node.right = delete(node.right,key);
             }
 
+
+        }else {
+            if (node.left.color==BLACK&&node.right.color==BLACK){
+                node = moveRedLeft(node);
+            }
+            node.left = delete(node.left,key);
         }
-        return balance(root);
+        return balance(node);
+
     }
 
     private class Node{
