@@ -1,6 +1,7 @@
 package BinarySearchTree;
 
 
+import java.lang.reflect.Parameter;
 import java.util.LinkedList;
 import java.util.NoSuchElementException;
 import java.util.Queue;
@@ -40,18 +41,29 @@ public class BinarySearchTree<Key extends Comparable<Key>,Value>{
         }
         root.size = size(root.left)+size(root.right)+1;
         return root;
-
-
     }
+
+
+//    public void deleteMin(){
+//        deleteMin(root);
+//    }
+//    public Node deleteMin(Node root){
+//        if (root.left==null){
+//            return root.right;
+//        }
+//        root.left = deleteMin(root.left);
+//        root.size = size(root.left)+size(root.right)+1;
+//        return root;
+//    }
     public void deleteMin(){
-        deleteMin(root);
+        root =deleteMin(root);
     }
     public Node deleteMin(Node root){
         if (root.left==null){
             return root.right;
         }
         root.left = deleteMin(root.left);
-        root.size = size(root.left)+size(root.right)+1;
+        root.size = root.left.size+root.right.size;
         return root;
     }
     public void deleteMax(){
@@ -214,32 +226,62 @@ public class BinarySearchTree<Key extends Comparable<Key>,Value>{
 //        return root;
 //    }
     public void delete(Key key){
-        delete(key,root);
+        root = delete(root,key);
+
     }
-    private Node delete(Key key,Node root){
+    public Node delete(Node root,Key key){
         if (root==null){
             return null;
         }
         int cmp = key.compareTo(root.key);
         if (cmp>0){
-            root.right = delete(key,root.right);
+            root.right = delete(root.right,key);
         }else if (cmp<0){
-            root.left = delete(key,root.left);
+            root.left = delete(root.left,key);
         }else {
+
+            if (root.left == null){
+                return root.right;
+            }
             if (root.right == null){
                 return root.left;
-            }else if (root.left==null){
-                return root.right;
-            }else {
-                Node t = root;
-                root = min(root.right);
-                root.right = deleteMin(root.right);
-                root.left = t.left;
             }
+            Node x = root;
+            root = min(x.right);
+            root.right = deleteMin(x.right);
+            root.left = x.left;
+
         }
         root.size = size(root.left)+size(root.right)+1;
         return root;
     }
+//    public void delete(Key key){
+//        delete(key,root);
+//    }
+//    private Node delete(Key key,Node root){
+//        if (root==null){
+//            return null;
+//        }
+//        int cmp = key.compareTo(root.key);
+//        if (cmp>0){
+//            root.right = delete(key,root.right);
+//        }else if (cmp<0){
+//            root.left = delete(key,root.left);
+//        }else {
+//            if (root.right == null){
+//                return root.left;
+//            }else if (root.left==null){
+//                return root.right;
+//            }else {
+//                Node t = root;
+//                root = min(root.right);
+//                root.right = deleteMin(root.right);
+//                root.left = t.left;
+//            }
+//        }
+//        root.size = size(root.left)+size(root.right)+1;
+//        return root;
+//    }
 //    private Node delete(Key key,Node root){
 //        if (root==null){
 //            return null;
@@ -263,15 +305,15 @@ public class BinarySearchTree<Key extends Comparable<Key>,Value>{
 //        root.size = size(root.left)+size(root.right)+1;
 //        return root;
 //    }
-    public Key max(){
-
-    }
-    private Node max(Node root){
-
-    }
-    public Iterable<Key> keys(){
-        return keys(min(),)
-    }
+//    public Key max(){
+//
+//    }
+//    private Node max(Node root){
+//
+//    }
+//    public Iterable<Key> keys(){
+//        return keys(min(),)
+//    }
     public Iterable<Key> keys(Key lo,Key hi){
         Queue<Key> queue = new LinkedList<>();
         keys(root,queue,lo,hi);

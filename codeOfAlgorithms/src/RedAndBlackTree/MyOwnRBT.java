@@ -2,6 +2,8 @@ package RedAndBlackTree;
 
 import org.w3c.dom.Node;
 
+import javax.management.ValueExp;
+
 /**
  * @author Yuyuan Huang
  * @create 2021-06-26 20:59
@@ -308,4 +310,201 @@ public class MyOwnRBT<Key extends Comparable<Key>,Value> {
             this.size = size;
         }
     }
+}
+class MyRBT<Key extends Comparable<Key>,Value>{
+    private Node root;
+    private final static boolean RED = true;
+    private static final boolean BLACK = false;
+
+    public MyRBT(Key key,Value value){
+        root = new Node(key,value,BLACK,1,null,null);
+    }
+
+
+
+
+    private class Node{
+        boolean color;
+        int size;
+        Node left;
+        Node right;
+        Key key;
+        Value value;
+        public Node(Key key, Value value,boolean color,int size,Node left,Node right){
+            this.key = key;
+            this.value = value;
+            this.color = color;
+            this.left = left;
+            this.right = right;
+            this.size = size;
+        }
+    }
+    public boolean isRed(Node node){
+        return node.color;
+    }
+    public int size(Node node){
+        if (node ==null){
+            return 0;
+        }
+        return node.size;
+    }
+    public Node leftRotate(Node h){
+        Node x = h.right;
+        x.right = x.left;
+        x.left = h;
+        x.color = h.color;
+        h.color = RED;
+        x.size = h.size;
+        h.size = h.left.size+h.right.size+1;
+        return x;
+    }
+    public Node rightRotate(Node h){
+        Node x = h.left;
+        h.left = x.right;
+        x.right = h;
+        x.color = h.color;
+        h.color = RED;
+        x.size = h.size;
+        h.size = h.left.size+h.right.size+1;
+        return x;
+    }
+    public void flipColor(Node node ){
+        node.color = RED;
+        node.left.color = BLACK;
+        node.right.color = BLACK;
+    }
+    public Node min(){
+        return min(root);
+    }
+    public Node min(Node node){
+        if (node == null){
+            return null;
+        }
+        if (node.left!=null){
+            return min(node.left);
+        }else {
+            return node;
+        }
+    }
+    public void put(Key key,Value value){
+        root = put(key,value,root);
+        root.color = BLACK;
+    }
+    public Node put(Key key,Value value,Node node){
+        if (node == null){
+            return new Node(key,value,RED,1,null,null);
+        }
+        int cmp = key.compareTo(root.key);
+        if (cmp>0){
+            node.right = put(key,value,node.right);
+        }else if (cmp<0){
+            node.left = put(key,value,node.left);
+        }else {
+            node.value = value;
+        }
+        if (!isRed(node.left)&&isRed(node.right)){
+            rightRotate(node);
+        }
+        if (isRed(node.left)&&isRed(node.left.left)){
+            leftRotate(node);
+        }
+        if (isRed(node.left)&&isRed(node.right)){
+            flipColor(node);
+        }
+        node.size = node.left.size+node.right.size+1;
+        return node;
+
+    }
+    public Value get(Key key){
+        return get(root,key)==null? null:get(root,key).value;
+    }
+    public Node get(Node node,Key key){
+        if (node == null){
+            return null;
+        }
+        int cmp = key.compareTo(node.key);
+        if (cmp>0){
+            return get(node.right,key);
+        }else if (cmp<0){
+            return get(node.left,key);
+        }else {
+            return node;
+        }
+    }
+    public Key select(int k){
+        Node node = select(root,k);
+        return node==null? null:node.key;
+    }
+    public Node select(Node node,int k){
+        if (node == null){
+            return null;
+        }
+        int size = node.left.size;
+        if (size>k){
+            return select(node.left,k);
+        }else if (size<k){
+            return select(node.right,k-size-1);
+        }else {
+            return node;
+        }
+
+
+    }
+    public void delMin(){
+        if (!isRed(root.left)&&!isRed(root.right)){
+            root.color=RED;
+        }
+        root = delMin(root);
+        if (root!=null){
+            root.color=BLACK;
+        }
+
+    }
+    public Node delMin(Node node){
+        if (node.left==null){
+            return null;
+        }
+        if (!isRed(node.left)&&!isRed(node.left.left)){
+            node = moveRightLeft(node);
+        }
+        node.left = delMin(node.left);
+        return
+
+    }
+    public Node balance(Node node){
+        if (node == null){
+            return null;
+        }
+        if (node.right.color==RED){
+            node = leftRotate(node);
+        }
+        if (!isRed(node.left)&&isRed(node.right)){
+            node = leftRotate(node);
+        }
+        if (isRed(node.left)&&isRed(node.left.left)){
+            node = rightRotate(node);
+        }
+        if (isRed(node.left)&&isRed(node.right)){
+            flipColor(node);
+        }
+    }
+    public Node moveRightLeft(Node node){
+        flipColor(node);
+        if (node.right.left.color==RED){
+            node.right = rightRotate(node.right);
+            node = leftRotate(node);
+        }
+        return node;
+
+    }
+    public void delFlipColor(Node node){
+        node.color = BLACK;
+        node.left.color = node.right.color = RED;
+    }
+
+
+
+
+
+
 }
